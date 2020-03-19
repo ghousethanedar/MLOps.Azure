@@ -1,0 +1,30 @@
+﻿{
+  "Sample": null,
+  "EventHubProperties": {
+    "ConsumerGroupName": "",
+    "EventHubName": "powerbi",
+    "ServiceBusNamespace": "mlops-powerbi",
+    "SharedAccessPolicyKey": null,
+    "SharedAccessPolicyName": "mlopsstreamanalytics_EventHub_policy"
+  },
+  "BlobStorageProperties": null,
+  "IoTHubProperties": null,
+  "BlobReferenceProperties": null,
+  "SqlReferenceInputInfo": null,
+  "InputPartionKey": "",
+  "DataSourceCredentialDomain": null,
+  "Name": "EventHub",
+  "Type": "Data Stream",
+  "DataSourceType": "Event Hub",
+  "Serialization": {
+    "Encoding": "UTF8",
+    "Type": "Json",
+    "FieldDelimiter": null,
+    "Format": null,
+    "SerializationDllPath": null,
+    "SerializationClassName": null,
+    "SerializationDllPathInLocal": null
+  },
+  "CompresssionType": "None",
+  "ScriptType": "Input"
+}

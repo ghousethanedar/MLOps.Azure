@@ -1,0 +1,12 @@
+﻿requests>=2.22
+numpy>=1.17
+pandas>=0.25
+scikit-learn>=0.21.3
+azureml-sdk>=1.0.85
+azure-cli==2.0.76
+python-dotenv>=0.11.0
+imbalanced-learn>=0.5.0
+statsmodels>=0.11.1
+azure-cli-core>=2.1.0
+inference_schema
+azure-storage-blob==2.1.0

@@ -1,0 +1,19 @@
+﻿{
+  "DataLocale": "en-US",
+  "OutputErrorPolicy": "Retry",
+  "EventsLateArrivalMaxDelayInSeconds": 5,
+  "EventsOutOfOrderMaxDelayInSeconds": 0,
+  "EventsOutOfOrderPolicy": "Adjust",
+  "StreamingUnits": 3,
+  "CompatibilityLevel": "1.1",
+  "UseSystemAssignedIdentity": false,
+  "GlobalStorageAccountName": null,
+  "GlobalStorageAccountKey": null,
+  "AccountName": null,
+  "AccountKey": null,
+  "ContainerName": null,
+  "Path": null,
+  "UploadFromLocal": false,
+  "DataSourceCredentialDomain": null,
+  "ScriptType": "JobConfig"
+}

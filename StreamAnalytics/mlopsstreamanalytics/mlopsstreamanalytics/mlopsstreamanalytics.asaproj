@@ -1,0 +1,46 @@
+﻿<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>119b0a2b-991a-4b61-9920-e6ceec7dc466</ProjectGuid>
+    <OutputType>File</OutputType>
+    <AssemblyName>mlopsstreamanalytics</AssemblyName>
+    <ASATargetsFilePath>$(AppData)\Microsoft\DataLake\MsBuild\1.0\StreamAnalytics.targets</ASATargetsFilePath>
+    <Name>mlopsstreamanalytics</Name>
+    <RootNamespace>mlopsstreamanalytics</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>false</DebugSymbols>
+    <OutputPath>bin\Release\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Folder Include="Functions\" />
+    <Folder Include="Inputs\" />
+    <Folder Include="Outputs\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Configure Include="Configuration.json">
+      <SubType>JobConfig</SubType>
+    </Configure>
+    <Configure Include="Inputs\EventHub.json">
+      <SubType>Input</SubType>
+    </Configure>
+    <Configure Include="Inputs\IoTStream.json">
+      <SubType>Input</SubType>
+    </Configure>
+    <Configure Include="Outputs\CoolPath.json">
+      <SubType>Output</SubType>
+    </Configure>
+    <Configure Include="Outputs\PowerBI.json">
+      <SubType>Output</SubType>
+    </Configure>
+  </ItemGroup>
+  <ItemGroup>
+    <Script Include="mlopsstreamanalytics.asaql" />
+  </ItemGroup>
+  <Import Project="$(ASATargetsFilePath)" />
+</Project>

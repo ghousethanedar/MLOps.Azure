@@ -1,0 +1,36 @@
+﻿{
+  "EventHubProperties": null,
+  "BlobStorageProperties": {
+    "Container": "incoming",
+    "DateFormat": "yyyy-MM-dd",
+    "PathPattern": "processed/{date}/{time}",
+    "StorageAccounts": [
+      {
+        "AccountKey": null,
+        "AccountName": "mlops2312"
+      }
+    ],
+    "TimeFormat": "HH"
+  },
+  "SQLDatabaseProperties": null,
+  "TableStorageProperties": null,
+  "ServiceBusQueueProperties": null,
+  "ServiceBusTopicProperties": null,
+  "DocumentDbProperties": null,
+  "PowellBIProperties": null,
+  "AzureDataLakeStoreProperties": null,
+  "AzureFunctionProperties": null,
+  "DataSourceCredentialDomain": null,
+  "Name": "CoolPath",
+  "DataSourceType": "Blob Storage",
+  "Serialization": {
+    "Encoding": "UTF8",
+    "Type": "Json",
+    "FieldDelimiter": null,
+    "Format": "Array",
+    "SerializationDllPath": null,
+    "SerializationClassName": null,
+    "SerializationDllPathInLocal": null
+  },
+  "ScriptType": "Output"
+}

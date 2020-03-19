@@ -1,0 +1,37 @@
+﻿variables:
+  - name: WORKSPACE_NAME
+    value: mlworskpace
+  - name: RESOURCE_GROUP
+    value: mlworkspace
+  - name: TRAIN_SCRIPT_NAME
+    value: experiments/training/train.py
+  - name: EVALUATE_SCRIPT_NAME
+    value: experiments/evaluation/evaluate.py
+  - name: REGISTER_SCRIPT_NAME
+    value: experiments/registration/register.py
+  - name: DATASET_PATH
+    value: "current/Current.csv"    
+  - name: DATASET_NAME
+    value: "MiningProcess_Flotation_Plant_Database.csv"
+  - name: MODEL_NAME
+    value: mining_random_forest
+  - name: MAX_NODES
+    value: 4
+  - name: COMPUTE_VM_SIZE
+    value: STANDARD_DS2_V2
+  - name: CPU_CLUSTER_NAME
+    value: default-compute
+  - name: PIPELINE_NAME
+    value: "mining-process-training-pipeline"
+  - name: STORAGE_CONTAINER_NAME
+    value: "train"
+  - name: DATASTORE_NAME
+    value: minig_datastore
+  - name: EXPERIMENT_NAME
+    value: mining_mlops
+  - name: SOURCES_DIRECTORY_TRAIN
+    value: ml_workspace
+  - name: PARALLELISM_LEVEL
+    value: 5
+  - name: FORCE_REGISTER
+    value: "false"

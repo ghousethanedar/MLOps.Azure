@@ -1,0 +1,10 @@
+containerResourceRequirements:
+  cpu: 1
+  memoryInGB: 4
+computeType: ACI
+appInsightsEnabled: True
+authEnabled: True
+sslEnabled: True
+sslCertificate: "open_ssl/ssl.crt"
+sslKey: "open_ssl/ssl.key"
+cname: "aci.mlops-azure.online"

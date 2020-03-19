@@ -1,0 +1,30 @@
+﻿{
+  "Sample": null,
+  "EventHubProperties": null,
+  "BlobStorageProperties": null,
+  "IoTHubProperties": {
+    "ConsumerGroupName": "$Default",
+    "IotHubNamespace": "iot-mlops",
+    "SharedAccessPolicyKey": null,
+    "SharedAccessPolicyName": "iothubowner",
+    "EndPoint": "messages/events"
+  },
+  "BlobReferenceProperties": null,
+  "SqlReferenceInputInfo": null,
+  "InputPartionKey": "",
+  "DataSourceCredentialDomain": null,
+  "Name": "IoTStream",
+  "Type": "Data Stream",
+  "DataSourceType": "IoT Hub",
+  "Serialization": {
+    "Encoding": "UTF8",
+    "Type": "Json",
+    "FieldDelimiter": null,
+    "Format": null,
+    "SerializationDllPath": null,
+    "SerializationClassName": null,
+    "SerializationDllPathInLocal": null
+  },
+  "CompresssionType": "None",
+  "ScriptType": "Input"
+}

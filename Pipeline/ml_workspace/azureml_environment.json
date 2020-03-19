@@ -1,0 +1,39 @@
+{
+  "name": "mining",
+  "version": null,
+  "environmentVariables": {
+    "MODEL_NAME": "mining_random_forest"
+  },
+  "python": {
+    "userManagedDependencies": false,
+    "interpreterPath": "python",
+    "condaDependenciesFile": null,
+    "baseCondaEnvironment": null
+  },
+  "docker": {
+    "enabled": true,
+    "baseImage": "mcr.microsoft.com/azureml/base:openmpi3.1.2-ubuntu18.04",
+    "baseDockerfile": null,
+    "sharedVolumes": true,
+    "shmSize": "2g",
+    "arguments": [],
+    "baseImageRegistry": {
+      "address": null,
+      "username": null,
+      "password": null
+    }
+  },
+  "spark": {
+    "repositories": [],
+    "packages": [],
+    "precachePackages": true
+  },
+  "databricks": {
+    "mavenLibraries": [],
+    "pypiLibraries": [],
+    "rcranLibraries": [],
+    "jarLibraries": [],
+    "eggLibraries": []
+  },
+  "inferencingStackVersion": null
+}

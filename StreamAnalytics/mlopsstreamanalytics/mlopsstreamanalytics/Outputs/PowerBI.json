@@ -1,0 +1,25 @@
+﻿{
+  "EventHubProperties": null,
+  "BlobStorageProperties": null,
+  "SQLDatabaseProperties": null,
+  "TableStorageProperties": null,
+  "ServiceBusQueueProperties": null,
+  "ServiceBusTopicProperties": null,
+  "DocumentDbProperties": null,
+  "PowellBIProperties": {
+    "RefreshToken": null,
+    "TokenUserPrincipalName": "pkaminski@pgs-soft.com",
+    "TokenUserDisplayName": "Piotr Kaminski",
+    "Dataset": "mlops",
+    "Table": "mlops",
+    "GroupId": "5a165828-f07a-40fe-9a47-fac2e53eec42",
+    "GroupName": "MLOpsAzure"
+  },
+  "AzureDataLakeStoreProperties": null,
+  "AzureFunctionProperties": null,
+  "DataSourceCredentialDomain": null,
+  "Name": "PowerBI",
+  "DataSourceType": "Power BI",
+  "Serialization": null,
+  "ScriptType": "Output"
+}

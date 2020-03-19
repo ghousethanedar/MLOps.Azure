@@ -1,0 +1,6 @@
+﻿SELECT
+    *
+INTO
+    PowerBI
+FROM
+    EventHub

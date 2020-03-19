@@ -1,0 +1,976 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "type": "string",
+            "metadata": "Data Factory name",
+            "defaultValue": "mlops-etls"
+        },
+        "Dataset_connectionString": {
+            "type": "secureString",
+            "metadata": "Secure string for 'connectionString' of 'Dataset'"
+        }
+    },
+    "variables": {
+        "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+    },
+    "resources": [
+        {
+            "name": "[concat(parameters('factoryName'), '/Main')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "Merge",
+                        "type": "Copy",
+                        "dependsOn": [
+                            {
+                                "activity": "Clear Current",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "source": {
+                                "type": "DelimitedTextSource",
+                                "storeSettings": {
+                                    "type": "AzureBlobStorageReadSettings",
+                                    "recursive": true,
+                                    "wildcardFolderPath": "*",
+                                    "wildcardFileName": "*.csv",
+                                    "enablePartitionDiscovery": false
+                                },
+                                "formatSettings": {
+                                    "type": "DelimitedTextReadSettings"
+                                }
+                            },
+                            "sink": {
+                                "type": "DelimitedTextSink",
+                                "storeSettings": {
+                                    "type": "AzureBlobStorageWriteSettings",
+                                    "copyBehavior": "MergeFiles"
+                                },
+                                "formatSettings": {
+                                    "type": "DelimitedTextWriteSettings",
+                                    "quoteAllText": true,
+                                    "fileExtension": ".txt"
+                                }
+                            },
+                            "enableStaging": false
+                        },
+                        "inputs": [
+                            {
+                                "referenceName": "StagingAll",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            }
+                        ],
+                        "outputs": [
+                            {
+                                "referenceName": "CurrentTraining",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            }
+                        ]
+                    },
+                    {
+                        "name": "Set StartDate to initial",
+                        "type": "SetVariable",
+                        "dependsOn": [
+                            {
+                                "activity": "If Staging exists",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "variableName": "StartDate",
+                            "value": {
+                                "value": "@getPastTime(pipeline().parameters.DataSpanInDays, 'Day')",
+                                "type": "Expression"
+                            }
+                        }
+                    },
+                    {
+                        "name": "CopyDailyBatches",
+                        "type": "Until",
+                        "dependsOn": [
+                            {
+                                "activity": "Set StartDate to initial",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            },
+                            {
+                                "activity": "Set Iterator to initial",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "expression": {
+                                "value": "@greater(addSeconds(formatDateTime(variables('IteratorDate'), 'yyyy-MM-dd'), 0),\naddSeconds(formatDateTime(utcnow(), 'yyyy-MM-dd'), 0))",
+                                "type": "Expression"
+                            },
+                            "activities": [
+                                {
+                                    "name": "Increment IteratorDate",
+                                    "type": "SetVariable",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "Increment NewIteratorDate",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "variableName": "IteratorDate",
+                                        "value": {
+                                            "value": "@variables('NewIteratorDate')",
+                                            "type": "Expression"
+                                        }
+                                    }
+                                },
+                                {
+                                    "name": "Increment NewIteratorDate",
+                                    "type": "SetVariable",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "If Exists",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "variableName": "NewIteratorDate",
+                                        "value": {
+                                            "value": "@string(addDays(variables('IteratorDate'), 1))",
+                                            "type": "Expression"
+                                        }
+                                    }
+                                },
+                                {
+                                    "name": "Folder Exists",
+                                    "type": "GetMetadata",
+                                    "dependsOn": [],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "dataset": {
+                                            "referenceName": "IncomingBinary",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "Path": {
+                                                    "value": "@formatDateTime(variables('IteratorDate'), 'yyyy-MM-dd')",
+                                                    "type": "Expression"
+                                                }
+                                            }
+                                        },
+                                        "fieldList": [
+                                            "exists"
+                                        ],
+                                        "storeSettings": {
+                                            "type": "AzureBlobStorageReadSettings",
+                                            "recursive": true
+                                        }
+                                    }
+                                },
+                                {
+                                    "name": "If Exists",
+                                    "type": "IfCondition",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "Folder Exists",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "expression": {
+                                            "value": "@equals(activity('Folder Exists').output.exists, true)",
+                                            "type": "Expression"
+                                        },
+                                        "ifTrueActivities": [
+                                            {
+                                                "name": "Copy Batch",
+                                                "type": "Copy",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "timeout": "7.00:00:00",
+                                                    "retry": 0,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "source": {
+                                                        "type": "JsonSource",
+                                                        "storeSettings": {
+                                                            "type": "AzureBlobStorageReadSettings",
+                                                            "recursive": true,
+                                                            "wildcardFolderPath": "*",
+                                                            "wildcardFileName": "*.json",
+                                                            "enablePartitionDiscovery": false
+                                                        }
+                                                    },
+                                                    "sink": {
+                                                        "type": "DelimitedTextSink",
+                                                        "storeSettings": {
+                                                            "type": "AzureBlobStorageWriteSettings"
+                                                        },
+                                                        "formatSettings": {
+                                                            "type": "DelimitedTextWriteSettings",
+                                                            "quoteAllText": true,
+                                                            "fileExtension": ".txt"
+                                                        }
+                                                    },
+                                                    "enableStaging": false
+                                                },
+                                                "inputs": [
+                                                    {
+                                                        "referenceName": "IncomingJson",
+                                                        "type": "DatasetReference",
+                                                        "parameters": {
+                                                            "Path": {
+                                                                "value": "@{formatDateTime(variables('IteratorDate'), 'yyyy-MM-dd')}",
+                                                                "type": "Expression"
+                                                            }
+                                                        }
+                                                    }
+                                                ],
+                                                "outputs": [
+                                                    {
+                                                        "referenceName": "StagingCsv",
+                                                        "type": "DatasetReference",
+                                                        "parameters": {
+                                                            "FileName": {
+                                                                "value": "@{formatDateTime(variables('IteratorDate'), 'yyyy-MM-dd')}.csv",
+                                                                "type": "Expression"
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                }
+                            ],
+                            "timeout": "7.00:00:00"
+                        }
+                    },
+                    {
+                        "name": "Set Iterator to initial",
+                        "type": "SetVariable",
+                        "dependsOn": [
+                            {
+                                "activity": "If Staging exists",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "variableName": "IteratorDate",
+                            "value": {
+                                "value": "@getPastTime(pipeline().parameters.DataSpanInDays, 'Day')",
+                                "type": "Expression"
+                            }
+                        }
+                    },
+                    {
+                        "name": "If ShouldCopyOriginalDataset",
+                        "type": "IfCondition",
+                        "dependsOn": [
+                            {
+                                "activity": "If Staging exists",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "expression": {
+                                "value": "@pipeline().parameters.ShouldUseOriginalDataset",
+                                "type": "Expression"
+                            },
+                            "ifTrueActivities": [
+                                {
+                                    "name": "Copy Original",
+                                    "type": "Copy",
+                                    "dependsOn": [],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "source": {
+                                            "type": "DelimitedTextSource",
+                                            "storeSettings": {
+                                                "type": "AzureBlobStorageReadSettings",
+                                                "recursive": true
+                                            },
+                                            "formatSettings": {
+                                                "type": "DelimitedTextReadSettings"
+                                            }
+                                        },
+                                        "sink": {
+                                            "type": "DelimitedTextSink",
+                                            "storeSettings": {
+                                                "type": "AzureBlobStorageWriteSettings"
+                                            },
+                                            "formatSettings": {
+                                                "type": "DelimitedTextWriteSettings",
+                                                "quoteAllText": true,
+                                                "fileExtension": ".txt"
+                                            }
+                                        },
+                                        "enableStaging": false
+                                    },
+                                    "inputs": [
+                                        {
+                                            "referenceName": "Original",
+                                            "type": "DatasetReference",
+                                            "parameters": {}
+                                        }
+                                    ],
+                                    "outputs": [
+                                        {
+                                            "referenceName": "StagingCsv",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "FileName": "original.csv"
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "Get Staging metadata",
+                        "type": "GetMetadata",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataset": {
+                                "referenceName": "StagingBinary",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            },
+                            "fieldList": [
+                                "exists"
+                            ],
+                            "storeSettings": {
+                                "type": "AzureBlobStorageReadSettings",
+                                "recursive": true
+                            }
+                        }
+                    },
+                    {
+                        "name": "If Staging exists",
+                        "type": "IfCondition",
+                        "dependsOn": [
+                            {
+                                "activity": "Get Staging metadata",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "expression": {
+                                "value": "@equals(activity('Get Staging metadata').output.exists, true)",
+                                "type": "Expression"
+                            },
+                            "ifTrueActivities": [
+                                {
+                                    "name": "Clear Staging",
+                                    "type": "Delete",
+                                    "dependsOn": [],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "dataset": {
+                                            "referenceName": "StagingAll",
+                                            "type": "DatasetReference",
+                                            "parameters": {}
+                                        },
+                                        "enableLogging": false,
+                                        "storeSettings": {
+                                            "type": "AzureBlobStorageReadSettings",
+                                            "recursive": true,
+                                            "wildcardFileName": "*.csv"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "Clear Current",
+                        "type": "Delete",
+                        "dependsOn": [
+                            {
+                                "activity": "CopyDailyBatches",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            },
+                            {
+                                "activity": "If ShouldCopyOriginalDataset",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataset": {
+                                "referenceName": "CurrentTraining",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            },
+                            "enableLogging": false,
+                            "storeSettings": {
+                                "type": "AzureBlobStorageReadSettings",
+                                "recursive": true,
+                                "wildcardFileName": "*.csv"
+                            }
+                        }
+                    }
+                ],
+                "parameters": {
+                    "DataSpanInDays": {
+                        "type": "int",
+                        "defaultValue": 1
+                    },
+                    "ShouldUseOriginalDataset": {
+                        "type": "bool",
+                        "defaultValue": true
+                    }
+                },
+                "variables": {
+                    "StartDate": {
+                        "type": "String"
+                    },
+                    "IteratorDate": {
+                        "type": "String"
+                    },
+                    "NewIteratorDate": {
+                        "type": "String"
+                    }
+                },
+                "annotations": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/StagingAll')]",
+                "[concat(variables('factoryId'), '/datasets/CurrentTraining')]",
+                "[concat(variables('factoryId'), '/datasets/StagingBinary')]",
+                "[concat(variables('factoryId'), '/datasets/IncomingBinary')]",
+                "[concat(variables('factoryId'), '/datasets/Original')]",
+                "[concat(variables('factoryId'), '/datasets/StagingCsv')]",
+                "[concat(variables('factoryId'), '/datasets/IncomingJson')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/Original')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "Dataset",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobStorageLocation",
+                        "fileName": "MiningProcess_Flotation_Plant_Database.csv",
+                        "container": "train"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": [
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/Dataset')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/CurrentTraining')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "Dataset",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobStorageLocation",
+                        "fileName": "Current.csv",
+                        "folderPath": "current",
+                        "container": "train"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": [
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/Dataset')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/StagingAll')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "Dataset",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobStorageLocation",
+                        "fileName": "*.csv",
+                        "folderPath": "staging",
+                        "container": "train"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/Dataset')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/IncomingJson')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "Dataset",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "Path": {
+                        "type": "string"
+                    }
+                },
+                "annotations": [],
+                "type": "Json",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobStorageLocation",
+                        "fileName": "*.json",
+                        "folderPath": {
+                            "value": "@dataset().Path",
+                            "type": "Expression"
+                        },
+                        "container": "incoming"
+                    }
+                },
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "date": {
+                            "type": "string"
+                        },
+                        "% Iron Feed": {
+                            "type": "string"
+                        },
+                        "% Silica Feed": {
+                            "type": "string"
+                        },
+                        "Starch Flow": {
+                            "type": "string"
+                        },
+                        "Amina Flow": {
+                            "type": "string"
+                        },
+                        "Ore Pulp Flow": {
+                            "type": "string"
+                        },
+                        "Ore Pulp pH": {
+                            "type": "string"
+                        },
+                        "Ore Pulp Density": {
+                            "type": "string"
+                        },
+                        "Flotation Column 01 Air Flow": {
+                            "type": "string"
+                        },
+                        "Flotation Column 02 Air Flow": {
+                            "type": "string"
+                        },
+                        "Flotation Column 03 Air Flow": {
+                            "type": "string"
+                        },
+                        "Flotation Column 04 Air Flow": {
+                            "type": "string"
+                        },
+                        "Flotation Column 05 Air Flow": {
+                            "type": "string"
+                        },
+                        "Flotation Column 06 Air Flow": {
+                            "type": "string"
+                        },
+                        "Flotation Column 07 Air Flow": {
+                            "type": "string"
+                        },
+                        "Flotation Column 01 Level": {
+                            "type": "string"
+                        },
+                        "Flotation Column 02 Level": {
+                            "type": "string"
+                        },
+                        "Flotation Column 03 Level": {
+                            "type": "string"
+                        },
+                        "Flotation Column 04 Level": {
+                            "type": "string"
+                        },
+                        "Flotation Column 05 Level": {
+                            "type": "string"
+                        },
+                        "Flotation Column 06 Level": {
+                            "type": "string"
+                        },
+                        "Flotation Column 07 Level": {
+                            "type": "string"
+                        },
+                        "% Iron Concentrate": {
+                            "type": "string"
+                        },
+                        "% Silica Concentrate": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/Dataset')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/IncomingBinary')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "Dataset",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "Path": {
+                        "type": "string"
+                    }
+                },
+                "annotations": [],
+                "type": "Binary",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobStorageLocation",
+                        "folderPath": {
+                            "value": "@dataset().Path",
+                            "type": "Expression"
+                        },
+                        "container": "incoming"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/Dataset')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/StagingCsv')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "Dataset",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "FileName": {
+                        "type": "string"
+                    }
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobStorageLocation",
+                        "fileName": {
+                            "value": "@dataset().FileName",
+                            "type": "Expression"
+                        },
+                        "folderPath": "staging",
+                        "container": "train"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/Dataset')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/StagingBinary')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "Dataset",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "Binary",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobStorageLocation",
+                        "folderPath": "staging",
+                        "container": "train"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/Dataset')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/Dataset')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureBlobStorage",
+                "typeProperties": {
+                    "connectionString": "[parameters('Dataset_connectionString')]"
+                }
+            },
+            "dependsOn": []
+        }
+    ]
+}

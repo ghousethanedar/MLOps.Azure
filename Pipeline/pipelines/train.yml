@@ -1,0 +1,102 @@
+﻿pr: none
+trigger:
+  branches:
+    include:
+    - master
+
+variables:
+- template: variables.yml
+  
+  
+stages:
+  - stage: "Main"
+    displayName: "Train mining model RFR"
+    jobs:
+    - job: "PublishMLPipeline"
+      displayName: "Publish ML Pipeline"
+      pool:
+        vmImage: "ubuntu-18.04"
+      container: mcr.microsoft.com/mlops/python:latest
+      steps:
+        - task: AzureCLI@1
+          displayName: "Publish"
+          name: "Publish"
+          inputs:
+            azureSubscription: "MLOpsWorkspace"
+            scriptLocation: inlineScript
+            workingDirectory: $(Build.SourcesDirectory)
+            inlineScript: |
+              export STORAGE_ACCOUNT_KEY=$(az storage account keys list --account-name $(STORAGE_ACCOUNT_NAME) --query "[0].value")
+              export SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+              python -m ml_workspace.publish_train_evaluate_register --output_file_name "pipeline_id.txt"
+              PIPELINEID="$(cat pipeline_id.txt)"
+              echo "##vso[task.setvariable variable=PIPELINEID;isOutput=true]$PIPELINEID"              
+    - job: "RunMLPipeline"
+      dependsOn: "PublishMLPipeline"
+      displayName: "Run ML Pipeline"
+      pool: server
+      variables:
+        PIPELINE_ID: $[ dependencies.PublishMLPipeline.outputs['Publish.PIPELINEID'] ]
+      steps:
+        - task: MLPublishedPipelineRestAPITask@0
+          displayName: "Run ML Pipeline"
+          inputs:
+            azureSubscription: "MLOpsWorkspace"
+            PipelineId: "$(PIPELINE_ID)"
+            ExperimentName: "$(EXPERIMENT_NAME)"
+            PipelineParameters: '"ParameterAssignments": {"model_name": "$(MODEL_NAME)", "dataset_name": "$(DATASET_NAME)", "build_id": "$(Build.BuildId)", "should_tune_hyperparameters": "False"}'
+    - job: "GetLatestModelVersion"
+      dependsOn: "RunMLPipeline"
+      displayName: "Get latest ML Model version"
+      pool:
+        vmImage: "ubuntu-18.04"
+      container: mcr.microsoft.com/mlops/python:latest
+      steps:
+        - task: AzureCLI@1
+          displayName: "GetVersion"
+          name: "GetVersion"
+          inputs:
+            azureSubscription: "MLOpsWorkspace"
+            scriptLocation: inlineScript
+            workingDirectory: $(Build.SourcesDirectory)
+            inlineScript: |
+              export STORAGE_ACCOUNT_KEY=$(az storage account keys list --account-name $(STORAGE_ACCOUNT_NAME) --query "[0].value")
+              export SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+              python -m ml_workspace.latest_model --output_file_name "model_id.txt"
+              MODELID="$(cat model_id.txt)"
+              echo "##vso[task.setvariable variable=MODELID;isOutput=true]$MODELID"        
+    - job: "DeployMLModel"
+      dependsOn: "GetLatestModelVersion"
+      variables:
+        MODEL_ID: $[ dependencies.GetLatestModelVersion.outputs['GetVersion.MODELID'] ]      
+      steps:
+        - task: AzureCLI@2
+          inputs:
+            azureSubscription: 'MLOpsWorkspace'
+            scriptType: 'bash'
+            scriptLocation: 'inlineScript'
+            inlineScript: |
+              touch Dockerfile
+              export STORAGE_ACCOUNT_KEY=$(az storage account keys list --account-name $(STORAGE_ACCOUNT_NAME) --query "[0].value")
+              echo ENV STORAGE_ACCOUNT_KEY=$(STORAGE_ACCOUNT_KEY) >> Dockerfile
+              echo ENV STORAGE_ACCOUNT_NAME=$(STORAGE_ACCOUNT_NAME) >> Dockerfile
+              echo ENV STORAGE_ACCOUNT_CONTAINER="train" >> Dockerfile
+              echo ENV STORAGE_ACCOUNT_FILE="latest/latest.csv" >> Dockerfile
+              2> >(while read line; do (>&2 echo "STDERROR: $line"); done)
+            addSpnToEnvironment: true
+            workingDirectory: '$(Build.SourcesDirectory)/deployment'
+            failOnStandardError: true
+        - task: AMLModelDeploy@0
+          inputs:
+            azureSubscription: 'MLOpsWorkspace'
+            modelSourceType: 'manualSpec'
+            modelName: '$(MODEL_NAME)'
+            deploymentTarget: 'ACI'
+            modelVersion: '$(MODEL_ID)'
+            deploymentName: 'mining-random-forest'
+            inferencePath: 'deployment/inferenceConfig.yml'
+            deployConfig: 'deployment/aci.yml'
+            overwriteExistingDeployment: true
+              
+            
+            
